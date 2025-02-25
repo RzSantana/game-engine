@@ -1,6 +1,6 @@
 import { v4 as uuid } from 'uuid'
 import type { INode, NodeID, NodePath } from './NodeTypes'
-import type { SignalEmitter, SignalMap } from '../signals/types'
+import type { SignalEmitter, SignalMap } from '../signals/SignalTypes'
 
 /**
  * Implementación base del sistema de nodos.

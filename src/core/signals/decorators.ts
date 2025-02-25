@@ -1,5 +1,5 @@
 import { Signal } from './Signal'
-import type { SignalEmitter, SignalMap } from './types'
+import type { SignalEmitter, SignalMap } from './SignalTypes'
 
 /**
  * Decorador que crea una señal cuando se accede por primera vez

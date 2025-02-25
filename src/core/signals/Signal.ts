@@ -1,4 +1,4 @@
-import type { SignalCallback } from './types'
+import type { SignalCallback } from './SignalTypes'
 
 /**
  * Clase que representa un señal que puede ser emitida y conectada.
