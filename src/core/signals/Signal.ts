@@ -1,4 +1,4 @@
-import type { SignalCallback } from './SignalTypes'
+import type { SignalCallback } from './types'
 
 /**
  * Clase que representa un señal que puede ser emitida y conectada.
@@ -84,6 +84,7 @@ export class Signal<T extends unknown[] = []> {
                 callback.fn(...args)
             } catch (error) {
                 console.error(`[Signal] Error en callback: ${error}`);
+
             }
 		}
 

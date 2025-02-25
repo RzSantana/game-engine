@@ -1,6 +1,7 @@
 import { v4 as uuid } from 'uuid'
 import type { INode, NodeID, NodePath } from './NodeTypes'
 import type { SignalEmitter, SignalMap } from '../signals/SignalTypes'
+import { ScriptState, type ScriptComponent } from '../scripting'
 
 /**
  * Implementación base del sistema de nodos.
@@ -11,7 +12,8 @@ export class Node implements INode, SignalEmitter {
 	name: string
 	parent: Node | null = null
 	children: Node[] = []
-    _signals?: SignalMap;
+	_signals?: SignalMap
+	private _script: ScriptComponent | null = null
 
 	/**
 	 * Constructor del nodo
@@ -84,6 +86,11 @@ export class Node implements INode, SignalEmitter {
 			while (root.parent) {
 				root = root.parent
 			}
+
+            if (path === '/' || path === `/${root.name}`) {
+                return root
+            }
+
 			return root.getNodeByRelativePath(path.slice(1))
 		}
 
@@ -114,34 +121,102 @@ export class Node implements INode, SignalEmitter {
 		return child.getNodeByRelativePath(parts.splice(1).join('/'))
 	}
 
-    /**
-     * Método que se llama cuando el nodo entra en el árbol de la escenas.
-     * Los nodos derivados pueden sobrescribir este método para realizar
-     * inicializaciones cuando el nodo se añade al árbol.
-     */
-    protected _enter_tree(): void {
-        // Propagar el evento a los hijos
-		for (const child of this.children) {
-			child._enter_tree();
+	/**
+	 * Método que se llama cuando el nodo entra en el árbol de la escenas.
+	 * Los nodos derivados pueden sobrescribir este método para realizar
+	 * inicializaciones cuando el nodo se añade al árbol.
+	 */
+	protected _enter_tree(): void {
+		// Si hay un script, llamar a su método _onReady
+		if (this._script && this._script.getState() === ScriptState.READY) {
+			this._script._onReady()
 		}
-    }
 
-    /**
-     * Método que se llama cuando el nodo sale del árbol de escenas.
-     * Los nodos derivados pueden sobrescribir este método para realizar
-     * limpieza cuando el nodo se elimina del árbol.
-     */
-    protected _exit_tree(): void {
-        // Limpiamos las señales si tiene
-        if (this._signals) {
-            for (const signal of this._signals.values()) {
-                signal._clearup()
-            }
-        }
+		// Propagar el evento a los hijos
+		for (const child of this.children) {
+			child._enter_tree()
+		}
+	}
 
-        // Propagar el evento a los hijos
-        for (const child of this.children) {
-            child._exit_tree()
-        }
-    }
- }
+	/**
+	 * Método que se llama cuando el nodo sale del árbol de escenas.
+	 * Los nodos derivados pueden sobrescribir este método para realizar
+	 * limpieza cuando el nodo se elimina del árbol.
+	 */
+	protected _exit_tree(): void {
+		// Limpiamos las señales si tiene
+		if (this._signals) {
+			for (const signal of this._signals.values()) {
+				signal._clearup()
+			}
+		}
+
+		// Propagar el evento a los hijos
+		for (const child of this.children) {
+			child._exit_tree()
+		}
+	}
+
+	/**
+	 * Estable el script para este nodo
+	 */
+	setScript(script: ScriptComponent): void {
+		// Si ya hay un script, desvincularlo primero
+		if (this._script) {
+			this._script._detachFromNode()
+		}
+
+		this._script = script
+		script._attachToNode(this)
+	}
+
+	/**
+	 * Obtiene el script asociado a este nodo
+	 */
+	getScript<T extends ScriptComponent>(): T | null {
+		return this._script as T | null
+	}
+
+	/**
+	 * Elimina el script de este nodo
+	 */
+	removeScript(): void {
+		if (this._script) {
+			this._script._detachFromNode()
+			this._script = null
+		}
+	}
+
+	// --------------- Métodos para el ciclo de vida ----------------
+	_process(deltaTime: number): void {
+		// Procesar el script si está activo
+		if (
+			this._script &&
+			this._script.getState() === ScriptState.ACTIVE &&
+			this._script.isEnabled()
+		) {
+			this._script._process(deltaTime)
+		}
+
+		// Propagar a los hijos
+		for (const child of this.children) {
+			child._process(deltaTime)
+		}
+	}
+
+	_physics_process(deltaTime: number): void {
+		// Procesar el script para físicas
+		if (
+			this._script &&
+			this._script.getState() === ScriptState.ACTIVE &&
+			this._script.isEnabled()
+		) {
+			this._script._physics_process(deltaTime)
+		}
+
+		// Propagar a los hijos
+		for (const child of this.children) {
+			child._physics_process(deltaTime)
+		}
+	}
+}
