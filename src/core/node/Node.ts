@@ -1,15 +1,17 @@
 import { v4 as uuid } from 'uuid'
 import type { INode, NodeID, NodePath } from './NodeTypes'
+import type { SignalEmitter, SignalMap } from '../signals/types'
 
 /**
  * Implementación base del sistema de nodos.
  * Esta clase provee la funcionalidad fundamental que todos los nodos del engine necesitan.
  */
-export class Node implements INode {
+export class Node implements INode, SignalEmitter {
 	readonly id: NodeID
 	name: string
 	parent: Node | null = null
 	children: Node[] = []
+    _signals?: SignalMap;
 
 	/**
 	 * Constructor del nodo
@@ -49,7 +51,7 @@ export class Node implements INode {
 
 	/**
 	 * Elimina un nodo hijo del nodo actual.
-	 * Si el nod o es hijo de ese nodo, no hace nada
+	 * Si el nodo o es hijo de ese nodo, no hace nada
 	 */
 	removeChild(child: Node): void {
 		const index = this.children.indexOf(child)
@@ -130,6 +132,13 @@ export class Node implements INode {
      * limpieza cuando el nodo se elimina del árbol.
      */
     protected _exit_tree(): void {
+        // Limpiamos las señales si tiene
+        if (this._signals) {
+            for (const signal of this._signals.values()) {
+                signal._clearup()
+            }
+        }
+
         // Propagar el evento a los hijos
         for (const child of this.children) {
             child._exit_tree()
